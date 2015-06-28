@@ -15,7 +15,7 @@ public protocol FrostedSidebarDelegate{
     func sidebar(sidebar: FrostedSidebar, willDismissFromScreenAnimated animated: Bool)
     func sidebar(sidebar: FrostedSidebar, didDismissFromScreenAnimated animated: Bool)
     func sidebar(sidebar: FrostedSidebar, didTapItemAtIndex index: Int)
-    func sidebar(sidebar: FrostedSidebar, didEnable iconEnabled: Bool, iconAtIndex index: Int)
+    func sidebar(sidebar: FrostedSidebar, didEnable calloutEnabled: Bool, calloutAtIndex index: Int)
 }
 
 var sharedSidebar: FrostedSidebar?
@@ -27,10 +27,10 @@ public class FrostedSidebar: UIViewController {
     public var width:                   CGFloat                     = 145.0
     public var showFromRight:           Bool                        = false
     public var animationDuration:       CGFloat                     = 0.25
-    public var iconSize:                CGSize                      = CGSize(width: 48.0, height: 48.0)
+    public var calloutSize:             CGSize                      = CGSize(width: 48.0, height: 48.0)
     public var itemSize:                CGSize                      = CGSize(width: 56.0, height: 62.0)
     public var tintColor:               UIColor                     = UIColor(white: 0.2, alpha: 0.73)
-    public var iconBackgroundColor:     UIColor                     = UIColor(white: 1, alpha: 0.25)
+    public var calloutBackgroundColor:     UIColor                     = UIColor(white: 1, alpha: 0.25)
     public var borderWidth:             CGFloat                     = 2
     public var delegate:                FrostedSidebarDelegate?     = nil
     public var actionForIndex:         [Int : ()->()]              = [:]
@@ -60,7 +60,7 @@ public class FrostedSidebar: UIViewController {
     private var borderColors:           [UIColor]?                  = nil
     private var names:                  [String]?                  = nil
 
-    private var iconViews:              [CalloutItem]               = []
+    private var calloutViews:              [CalloutItem]               = []
     
     //MARK: Public Methods
     
@@ -76,7 +76,7 @@ public class FrostedSidebar: UIViewController {
         contentView.showsHorizontalScrollIndicator = false
         contentView.showsVerticalScrollIndicator = false
         if colors != nil{
-            assert(iconImages.count == colors!.count, "If icon color are supplied, the iconImages and colors arrays must be of the same size.")
+            assert(iconImages.count == colors!.count, "If callout color are supplied, the calloutImages and colors arrays must be of the same size.")
         }
         
         selectedIndices = selectedItemIndices != nil ? NSMutableIndexSet(indexSet: selectedItemIndices!) : NSMutableIndexSet()
@@ -95,7 +95,7 @@ public class FrostedSidebar: UIViewController {
             callout.labelView.font = UIFont.systemFontOfSize(9.0)
             
             contentView.addSubview(callout)
-            iconViews += [callout]
+            calloutViews += [callout]
             if borderColors != nil{
                 if selectedIndices.containsIndex(index){
                     let color = borderColors![index]
@@ -188,23 +188,23 @@ public class FrostedSidebar: UIViewController {
             completion(true)
         }
         
-        for (index, callout) in enumerate(iconViews){
+        for (index, callout) in enumerate(calloutViews){
             callout.imageContainerView.layer.transform = CATransform3DMakeScale(0.3, 0.3, 1)
             callout.imageContainerView.alpha = 0
-            //callout.imageContainerView.backgroundColor = iconBackgroundColor
-            callout.originalBackgroundColor = iconBackgroundColor
+            //callout.imageContainerView.backgroundColor = calloutBackgroundColor
+            callout.originalBackgroundColor = calloutBackgroundColor
             callout.imageContainerView.layer.borderWidth = borderWidth
             animateSpringWithView(callout, idx: index, initDelay: animationDuration)
         }
     }
     
-    public func dismissAnimated(animated: Bool, completion: ((Bool) -> Void)?){
+    public func dismissAnimated(animated: Bool, completion: (() -> Void)?){
         let completionBlock: (Bool) -> Void = {finished in
             self.removeFromParentViewControllerCallingAppearanceMethods(true)
             self.delegate?.sidebar(self, didDismissFromScreenAnimated: true)
             self.layoutItems()
             if completion != nil{
-                completion!(finished)
+                completion!()
             }
         }
         delegate?.sidebar(self, willDismissFromScreenAnimated: animated)
@@ -229,34 +229,34 @@ public class FrostedSidebar: UIViewController {
         let didEnable = !selectedIndices.containsIndex(index)
         if borderColors != nil{
             let stroke = borderColors![index]
-            let icon = iconViews[index]
+            let callout = calloutViews[index]
             if didEnable{
                 if isSingleSelect{
                     selectedIndices.removeAllIndexes()
-                    for (index, callout) in enumerate(iconViews){
+                    for (index, callout) in enumerate(calloutViews){
                         callout.imageContainerView.layer.borderColor = UIColor.clearColor().CGColor
                     }
                 }
-                icon.imageContainerView.layer.borderColor = stroke.CGColor
+                callout.imageContainerView.layer.borderColor = stroke.CGColor
                 
                 var borderAnimation = CABasicAnimation(keyPath: "borderColor")
                 borderAnimation.fromValue = UIColor.clearColor().CGColor
                 borderAnimation.toValue = stroke.CGColor
                 borderAnimation.duration = 0.5
-                icon.imageContainerView.layer.addAnimation(borderAnimation, forKey: nil)
+                callout.imageContainerView.layer.addAnimation(borderAnimation, forKey: nil)
                 selectedIndices.addIndex(index)
                 
             } else{
                 if !isSingleSelect{
                     if !calloutsAlwaysSelected{
-                        icon.imageContainerView.layer.borderColor = UIColor.clearColor().CGColor
+                        callout.imageContainerView.layer.borderColor = UIColor.clearColor().CGColor
                         selectedIndices.removeIndex(index)
                     }
                 }
             }
-            let pathFrame = CGRect(x: -CGRectGetMidX(icon.imageContainerView.bounds), y: -CGRectGetMidY(icon.imageContainerView.bounds), width: icon.imageContainerView.bounds.size.width, height: icon.bounds.size.height)
-            let path = UIBezierPath(roundedRect: pathFrame, cornerRadius: icon.imageContainerView.layer.cornerRadius)
-            let shapePosition = view.convertPoint(icon.imageContainerView.center, fromView: contentView)
+            let pathFrame = CGRect(x: -CGRectGetMidX(callout.imageContainerView.bounds), y: -CGRectGetMidY(callout.imageContainerView.bounds), width: callout.imageContainerView.bounds.size.width, height: callout.imageContainerView.bounds.size.height)
+            let path = UIBezierPath(roundedRect: pathFrame, cornerRadius: callout.imageContainerView.layer.cornerRadius)
+            let shapePosition = view.convertPoint(callout.center, fromView: contentView)
             let circleShape = CAShapeLayer()
             circleShape.path = path.CGPath
             circleShape.position = shapePosition
@@ -282,7 +282,7 @@ public class FrostedSidebar: UIViewController {
             action()
         }
         delegate?.sidebar(self, didTapItemAtIndex: index)
-        delegate?.sidebar(self, didEnable: didEnable, iconAtIndex: index)
+        delegate?.sidebar(self, didEnable: didEnable, calloutAtIndex: index)
     }
     
     //MARK: Private Classes
@@ -292,7 +292,7 @@ public class FrostedSidebar: UIViewController {
         var labelView:              UILabel                     = UILabel()
         var imageContainerView:     UIView                      = UIView()
 
-        var iconIndex:              Int
+        var calloutIndex:              Int
         var originalBackgroundColor:UIColor? {
             didSet{
                 imageContainerView.backgroundColor = originalBackgroundColor
@@ -300,14 +300,14 @@ public class FrostedSidebar: UIViewController {
         }
         
         required init(coder aDecoder: NSCoder) {
-            self.iconIndex = 0
+            self.calloutIndex = 0
             super.init(coder: aDecoder)
         }
         
         init(index: Int){
             imageView.backgroundColor = UIColor.clearColor()
             imageView.contentMode = UIViewContentMode.ScaleAspectFit
-            iconIndex = index
+            calloutIndex = index
             super.init(frame: CGRect(x: 0, y: 0, width: 48, height: 64))
             addSubview(imageContainerView)
             addSubview(imageView)
@@ -317,6 +317,7 @@ public class FrostedSidebar: UIViewController {
         override func layoutSubviews() {
             super.layoutSubviews()
             let inset: CGFloat = bounds.size.width/2
+            
             imageView.frame = CGRect(x: 0, y: 0, width: inset, height: inset)
             imageView.center = CGPoint(x: inset, y: inset)
     
@@ -392,15 +393,15 @@ public class FrostedSidebar: UIViewController {
     private func layoutItems(){
         let leftPadding: CGFloat = (width - itemSize.width) / 2
         let topPadding: CGFloat = 12
-        for (index, callout) in enumerate(iconViews){
+        for (index, callout) in enumerate(calloutViews){
             let idx: CGFloat = CGFloat(index)
             
             
-            var iconSize:  CGSize  = CGSize(width: 48.0, height: 48.0)
+            var calloutSize:  CGSize  = CGSize(width: 48.0, height: 48.0)
             
             let frame = CGRect(x: leftPadding, y: topPadding*idx + itemSize.height*idx + topPadding, width:itemSize.width, height: itemSize.height)
             
-            let cframe = CGRect(x: leftPadding, y: topPadding*idx + iconSize.height*idx + topPadding, width:iconSize.width, height: iconSize.height)
+            let cframe = CGRect(x: leftPadding, y: topPadding*idx + calloutSize.height*idx + topPadding, width:calloutSize.width, height: calloutSize.height)
 
             callout.frame = frame
             
@@ -422,14 +423,14 @@ public class FrostedSidebar: UIViewController {
             }
             
         }
-        let iconCount = CGFloat(iconViews.count)
-        contentView.contentSize = CGSizeMake(0, iconCount * (iconSize.height + topPadding) + topPadding)
+        let calloutCount = CGFloat(calloutViews.count)
+        contentView.contentSize = CGSizeMake(0, calloutCount * (calloutSize.height + topPadding) + topPadding)
     }
     
     private func indexOfTap(location: CGPoint) -> Int? {
         var index: Int?
-        for (idx, icon) in enumerate(iconViews){
-            if CGRectContainsPoint(icon.frame, location){
+        for (idx, callout) in enumerate(calloutViews){
+            if CGRectContainsPoint(callout.frame, location){
                 index = idx
                 break
             }
