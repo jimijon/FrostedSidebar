@@ -24,16 +24,17 @@ public class FrostedSidebar: UIViewController {
     
     //MARK: Public Properties
     
-    public var width:                   CGFloat                     = 145.0
+    public var width:                   CGFloat                     = 144.0
     public var showFromRight:           Bool                        = false
     public var animationDuration:       CGFloat                     = 0.25
     public var calloutSize:             CGSize                      = CGSize(width: 48.0, height: 48.0)
-    public var itemSize:                CGSize                      = CGSize(width: 56.0, height: 62.0)
-    public var tintColor:               UIColor                     = UIColor(white: 0.2, alpha: 0.73)
-    public var calloutBackgroundColor:     UIColor                     = UIColor(white: 1, alpha: 0.25)
-    public var borderWidth:             CGFloat                     = 2
+    public var itemSize:                CGSize                      = CGSize(width: 72.0, height: 72.0)
+    public var tintColor:               UIColor                     = UIColor.whiteColor()
+    public var calloutBackgroundColor:  UIColor                     = UIColor(red: 123/255, green: 192/255, blue: 91/255, alpha: 1)
+    public var borderWidth:             CGFloat                     = 4
     public var delegate:                FrostedSidebarDelegate?     = nil
     public var actionForIndex:         [Int : ()->()]              = [:]
+    public var adjustForNavigationBar:  Bool                        = false
     public var selectedIndices:        NSMutableIndexSet           = NSMutableIndexSet()
     //Only one of these properties can be used at a time. If one is true, the other automatically is false
     public var isSingleSelect:          Bool                        = false{
@@ -49,6 +50,7 @@ public class FrostedSidebar: UIViewController {
             }
         }
     }
+    public var isShowing: Bool = false
     
     //MARK: Private Properties
     
@@ -64,7 +66,7 @@ public class FrostedSidebar: UIViewController {
     
     //MARK: Public Methods
     
-    required public init(coder aDecoder: NSCoder) {
+    required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
     }
     
@@ -84,7 +86,7 @@ public class FrostedSidebar: UIViewController {
         images = iconImages
         names = itemNames
         
-        for (index, image) in enumerate(images){
+        for (index, image) in images.enumerate(){
             let callout = CalloutItem(index: index)
             callout.clipsToBounds = true
             callout.imageView.image = image
@@ -92,7 +94,7 @@ public class FrostedSidebar: UIViewController {
             callout.labelView.textAlignment = NSTextAlignment.Center
             callout.labelView.sizeToFit()
             callout.labelView.textColor = UIColor.whiteColor()
-            callout.labelView.font = UIFont.systemFontOfSize(9.0)
+            callout.labelView.font = UIFont.systemFontOfSize(12)
             
             contentView.addSubview(callout)
             calloutViews += [callout]
@@ -125,9 +127,9 @@ public class FrostedSidebar: UIViewController {
         return true
     }
     
-    public override func supportedInterfaceOrientations() -> Int {
-        return Int(UIInterfaceOrientationMask.All.rawValue)
-    }
+//    public override func supportedInterfaceOrientations() -> Int {
+//        return Int(UIInterfaceOrientationMask.All.rawValue)
+//    }
     
     public override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransitionToSize(size, withTransitionCoordinator: coordinator)
@@ -137,6 +139,12 @@ public class FrostedSidebar: UIViewController {
     }
     
     public func showInViewController(viewController: UIViewController, animated: Bool){
+        if(isShowing){
+            
+            dismissAnimated(true, completion: nil)
+            return
+        }
+       layoutItems()
         if let bar = sharedSidebar{
             bar.dismissAnimated(false, completion: nil)
         }
@@ -182,13 +190,13 @@ public class FrostedSidebar: UIViewController {
         }
         
         if animated{
-            UIView.animateWithDuration(NSTimeInterval(animationDuration), delay: 0, options: UIViewAnimationOptions.allZeros, animations: animations, completion: completion)
+            UIView.animateWithDuration(NSTimeInterval(animationDuration), delay: 0, options: UIViewAnimationOptions.CurveLinear, animations: animations, completion: completion)
         } else{
             animations()
             completion(true)
         }
         
-        for (index, callout) in enumerate(calloutViews){
+        for (index, callout) in calloutViews.enumerate(){
             callout.imageContainerView.layer.transform = CATransform3DMakeScale(0.3, 0.3, 1)
             callout.imageContainerView.alpha = 0
             //callout.imageContainerView.backgroundColor = calloutBackgroundColor
@@ -196,6 +204,8 @@ public class FrostedSidebar: UIViewController {
             callout.imageContainerView.layer.borderWidth = borderWidth
             animateSpringWithView(callout, idx: index, initDelay: animationDuration)
         }
+        isShowing = true
+
     }
     
     public func dismissAnimated(animated: Bool, completion: (() -> Void)?){
@@ -223,6 +233,8 @@ public class FrostedSidebar: UIViewController {
         } else{
             completionBlock(true)
         }
+        isShowing = false
+
     }
     
     public func selectItemAtIndex(index: Int){
@@ -233,13 +245,13 @@ public class FrostedSidebar: UIViewController {
             if didEnable{
                 if isSingleSelect{
                     selectedIndices.removeAllIndexes()
-                    for (index, callout) in enumerate(calloutViews){
+                    for (_, callout) in calloutViews.enumerate(){
                         callout.imageContainerView.layer.borderColor = UIColor.clearColor().CGColor
                     }
                 }
                 callout.imageContainerView.layer.borderColor = stroke.CGColor
                 
-                var borderAnimation = CABasicAnimation(keyPath: "borderColor")
+                let borderAnimation = CABasicAnimation(keyPath: "borderColor")
                 borderAnimation.fromValue = UIColor.clearColor().CGColor
                 borderAnimation.toValue = stroke.CGColor
                 borderAnimation.duration = 0.5
@@ -291,15 +303,14 @@ public class FrostedSidebar: UIViewController {
         var imageView:              UIImageView                 = UIImageView()
         var labelView:              UILabel                     = UILabel()
         var imageContainerView:     UIView                      = UIView()
-
-        var calloutIndex:              Int
+        var calloutIndex:           Int
         var originalBackgroundColor:UIColor? {
             didSet{
                 imageContainerView.backgroundColor = originalBackgroundColor
             }
         }
         
-        required init(coder aDecoder: NSCoder) {
+        required init?(coder aDecoder: NSCoder) {
             self.calloutIndex = 0
             super.init(coder: aDecoder)
         }
@@ -308,7 +319,7 @@ public class FrostedSidebar: UIViewController {
             imageView.backgroundColor = UIColor.clearColor()
             imageView.contentMode = UIViewContentMode.ScaleAspectFit
             calloutIndex = index
-            super.init(frame: CGRect(x: 0, y: 0, width: 48, height: 64))
+            super.init(frame: CGRect(x: 0, y: 0, width: 48, height: 48))
             addSubview(imageContainerView)
             addSubview(imageView)
             addSubview(labelView)
@@ -316,18 +327,19 @@ public class FrostedSidebar: UIViewController {
         
         override func layoutSubviews() {
             super.layoutSubviews()
-            let inset: CGFloat = bounds.size.width/2
+            let insetX: CGFloat = bounds.size.width/2
+            let insetY: CGFloat = bounds.size.width/2.5
             
-            imageView.frame = CGRect(x: 0, y: 0, width: inset, height: inset)
-            imageView.center = CGPoint(x: inset, y: inset)
+            imageView.frame = CGRect(x: 0, y: 0, width: insetX, height: insetY)
+            imageView.center = CGPoint(x: insetX, y: insetY)
     
             imageContainerView.frame = CGRect(x: 0, y: 0, width: 48, height: 48)
-            imageContainerView.center = CGPoint(x: inset, y: inset)
+            imageContainerView.center = CGPoint(x: insetX, y: insetY)
             
         }
         
-        override func touchesBegan(touches: Set<NSObject>, withEvent event: UIEvent) {
-            super.touchesBegan(touches, withEvent: event)
+        func touchesBegan(touches: Set<NSObject>, withEvent event: UIEvent) {
+            //super.touchesBegan(touches, withEvent: event)
             
             var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
             let darkenFactor: CGFloat = 0.3
@@ -343,13 +355,13 @@ public class FrostedSidebar: UIViewController {
             backgroundColor = darkerColor
         }
         
-        override func touchesEnded(touches: Set<NSObject>, withEvent event: UIEvent) {
-            super.touchesEnded(touches, withEvent: event)
+        func touchesEnded(touches: Set<NSObject>, withEvent event: UIEvent) {
+           // super.touchesEnded(touches, withEvent: event)
             backgroundColor = originalBackgroundColor
         }
         
-        override func touchesCancelled(touches: Set<NSObject>, withEvent event: UIEvent!) {
-            super.touchesCancelled(touches, withEvent: event)
+        func touchesCancelled(touches: Set<NSObject>, withEvent event: UIEvent!) {
+           // super.touchesCancelled(touches, withEvent: event)
             backgroundColor = originalBackgroundColor
         }
         
@@ -392,12 +404,11 @@ public class FrostedSidebar: UIViewController {
     
     private func layoutItems(){
         let leftPadding: CGFloat = (width - itemSize.width) / 2
-        let topPadding: CGFloat = 12
-        for (index, callout) in enumerate(calloutViews){
-            let idx: CGFloat = CGFloat(index)
+        let topPadding: CGFloat = 6
+        for (index, callout) in calloutViews.enumerate(){
+            let idx: CGFloat = adjustForNavigationBar ? CGFloat(index) + 1 : CGFloat(index)
             
-            
-            var calloutSize:  CGSize  = CGSize(width: 48.0, height: 48.0)
+            let calloutSize:  CGSize  = CGSize(width: 48.0, height: 48.0)
             
             let frame = CGRect(x: leftPadding, y: topPadding*idx + itemSize.height*idx + topPadding, width:itemSize.width, height: itemSize.height)
             
@@ -411,11 +422,8 @@ public class FrostedSidebar: UIViewController {
             callout.imageContainerView.layer.borderColor = UIColor.clearColor().CGColor
             callout.imageContainerView.backgroundColor = UIColor.clearColor()
             callout.imageContainerView.frame = cframe
-            
-            callout.labelView.frame = CGRect(x: 0, y: 52, width:60, height: 10)
-            
-            
-            
+            callout.labelView.frame = CGRect(x: 0, y:56, width:72, height: 16)
+
             if selectedIndices.containsIndex(index){
                 if borderColors != nil{
                     callout.layer.borderColor = borderColors![index].CGColor
@@ -423,13 +431,20 @@ public class FrostedSidebar: UIViewController {
             }
             
         }
-        let calloutCount = CGFloat(calloutViews.count)
-        contentView.contentSize = CGSizeMake(0, calloutCount * (calloutSize.height + topPadding) + topPadding)
+//        let calloutCount = CGFloat(calloutViews.count)
+//        contentView.contentSize = CGSizeMake(0, calloutCount * (calloutSize.height + topPadding) + topPadding)
+//        if adjustForNavigationBar{
+//        contentView.contentSize = CGSizeMake(0, (calloutCount + 0.5) * (calloutSize.height + topPadding) + topPadding)
+//        } else {
+//                contentView.contentSize = CGSizeMake(0, calloutCount * (calloutSize.height + topPadding) + topPadding)
+//        }
+        contentView.contentSize = CGSizeMake(0,700.0)
+        
     }
     
     private func indexOfTap(location: CGPoint) -> Int? {
         var index: Int?
-        for (idx, callout) in enumerate(calloutViews){
+        for (idx, callout) in calloutViews.enumerate(){
             if CGRectContainsPoint(callout.frame, location){
                 index = idx
                 break
